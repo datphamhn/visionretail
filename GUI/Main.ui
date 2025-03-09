@@ -280,7 +280,7 @@
                </font>
               </property>
               <property name="text">
-               <string> Capture </string>
+               <string> Image </string>
               </property>
               <property name="icon">
                <iconset>

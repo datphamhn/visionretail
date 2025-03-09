@@ -9,6 +9,7 @@ from PyQt5 import QtGui
 from PyQt5.QtWidgets import QLabel, QSizePolicy
 from qt_thread_updater import get_updater
 from src import config as co
+from src.detect import Detector
 
 def text_size(frame):
     frame_height, frame_width = frame.shape[:2]
@@ -39,6 +40,7 @@ class Main:
         self.image = None
         self.ret = False
         self.start_camera = True
+        self.detector = Detector("./weights/best.onnx")
         self.init_text_size()
 
     def img_cv_2_qt(self, img_cv):
@@ -48,11 +50,8 @@ class Main:
         return QtGui.QPixmap.fromImage(img_qt)
     
     def init_devices(self, url_camera):
-        # Create empty buffer
-        self.frame_buffer = np.empty((0, *self.dim, self.channels))
-        self.camera = cv2.VideoCapture(url_camera)
-        self.camera.set(cv2.CAP_PROP_FPS, 25)  # set the FPS to 25 
-        self.ret, frame = self.camera.read()
+        self.camera = cv2.VideoCapture(url_camera) 
+        self.ret, frame = self.camera.read() 
         if not self.ret:
             self.start_camera = False
             self.MainGUI.MessageBox_signal.emit("Có lỗi xảy ra ! \n Không tìm thấy camera/video", "error")
@@ -68,12 +67,18 @@ class Main:
                 ret, frame = self.camera.read()
                 self.ret = ret
                 if self.ret and self.start_camera:
-                    self.image = frame.copy()
-                    # pre-process each frame
-                    frame_res = cv2.resize(self.image, self.dim)
-                    frame_res = frame_res / 255.0
+                    # Run detect
+                    bboxes, scores, class_ids, speed = self.detector.detect(frame.copy())
+                    # Visualize output
+                    vis_im = self.detector.draw_detections(frame, bboxes, scores, class_ids)
+                    # Count objects
+                    contents = self.detector.count(class_ids)
+                    get_updater().call_latest(self.MainGUI.label_Image.setPixmap, self.img_cv_2_qt(vis_im))
+                    get_updater().call_latest(self.MainGUI.text_result.setText, " ".join(contents))
+                    get_updater().call_latest(self.MainGUI.text_result.setStyleSheet,"background-color: rgb(0, 255, 0);")
                 else:
-                    get_updater().call_latest(self.MainGUI.text_result.setText, "")
+                    get_updater().call_latest(self.MainGUI.text_result.setText, "None")
+                    get_updater().call_latest(self.MainGUI.text_result.setStyleSheet,"background-color: rgb(0, 0, 255);")
                     break
             except Exception as e:
                 print("Bug: ", e)
@@ -87,12 +92,18 @@ class Main:
                 ret, frame = self.camera.read()
                 self.ret = ret
                 if self.ret and self.start_camera:
-                    self.image = frame.copy()
-                    # pre-process each frame
-                    frame_res = cv2.resize(self.image, self.dim)
-                    frame_res = frame_res / 255.0
+                    # Run detect
+                    bboxes, scores, class_ids, speed = self.detector.detect(frame.copy())
+                    # Visualize output
+                    vis_im = self.detector.draw_detections(frame, bboxes, scores, class_ids)
+                    # Count objects
+                    contents = self.detector.count(class_ids)
+                    get_updater().call_latest(self.MainGUI.label_Image.setPixmap, self.img_cv_2_qt(vis_im))
+                    get_updater().call_latest(self.MainGUI.text_result.setText, " ".join(contents))
+                    get_updater().call_latest(self.MainGUI.text_result.setStyleSheet,"background-color: rgb(0, 255, 0);")
                 else:
-                    get_updater().call_latest(self.MainGUI.text_result.setText, "")
+                    get_updater().call_latest(self.MainGUI.text_result.setText, "None")
+                    get_updater().call_latest(self.MainGUI.text_result.setStyleSheet,"background-color: rgb(0, 0, 255);")
                     break
             except Exception as e:
                 print("Bug: ", e)
@@ -100,19 +111,31 @@ class Main:
       
     def capture_image(self):
         if self.image is not None and self.ret and self.start_camera:
-            image = self.image.copy()
-            # Call SLVR model
+            frame = self.image.copy()
+            # Run detect
+            bboxes, scores, class_ids, speed = self.detector.detect(frame.copy())
+            # Visualize output
+            vis_im = self.detector.draw_detections(frame, bboxes, scores, class_ids)
+            # Count objects
+            contents = self.detector.count(class_ids)
             self.close_camera()
-            get_updater().call_latest(self.MainGUI.label_Image.setPixmap, self.img_cv_2_qt(image))
+            get_updater().call_latest(self.MainGUI.label_Image.setPixmap, self.img_cv_2_qt(vis_im))
+            get_updater().call_latest(self.MainGUI.text_result.setText, " ".join(contents))
+            get_updater().call_latest(self.MainGUI.text_result.setStyleSheet,"background-color: rgb(0, 255, 0);")
         else:
             self.MainGUI.MessageBox_signal.emit("Không tìm thấy Camera/Video !", "error")
     
     def manual_image(self, image_file):
         image = cv2.imread(image_file)
-        # Call SLVR model
-
-        get_updater().call_latest(self.MainGUI.label_Image.setPixmap, self.img_cv_2_qt(image))
-
+        # Run detect
+        bboxes, scores, class_ids, speed = self.detector.detect(image.copy())
+        # Visualize output
+        vis_im = self.detector.draw_detections(image, bboxes, scores, class_ids)
+        # Count objects
+        contents = self.detector.count(class_ids)
+        get_updater().call_latest(self.MainGUI.label_Image.setPixmap, self.img_cv_2_qt(vis_im))
+        get_updater().call_latest(self.MainGUI.text_result.setText, " ".join(contents))
+        get_updater().call_latest(self.MainGUI.text_result.setStyleSheet,"background-color: rgb(0, 255, 0);")
 
     def close_camera(self):
         try:
