@@ -1,5 +1,7 @@
 # visionretail
 This project is used for the purpose of indentifying different items in the retail sector using vision retail.Specifically, this automated checkout system uses Computer Vision, AI and IoT sensors to identify products, track costumers and automatically process transactions without using traditional checkout system.
+## UI app
+![UI screenshot](demo/UIapp.PNG)
 # Python version: 3.9.21
 # Installation guide 
 It is recommended to create a virtual environment with [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html):
